@@ -41,7 +41,7 @@ build: ## Build Godim
 	dep ensure && go build
 
 test: ## Launch tests
-	go test -v ./…
+	go test -v ./...
 
 test-cover: ## Launch tests coverage and send it to coverall
 	$(ENV) ./scripts/test-coverage.sh
