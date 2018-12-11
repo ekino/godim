@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/ekino/godim.svg)](https://travis-ci.org/ekino/godim)
+
 # godim - Go Dependency injection management 
 ## Version
 v0.1 - Alpha Version - Everything may change
