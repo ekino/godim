@@ -5,7 +5,7 @@ go:
   - 1.10.x
   - 1.11.x
   - master
-  
+
 before_install:
   - if [[ "${GO111MODULE}" = "on" ]]; then mkdir "${HOME}/go"; export GOPATH="${HOME}/go"; fi
   - make dep
@@ -13,7 +13,7 @@ install:
   - if [[ "${GO111MODULE}" = "on" ]]; then go mod download; else make build; fi
   - make build 
 script:
-  - make lint
+  # - make lint
   - make fmt-check
   - make test
 # after_success:

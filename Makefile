@@ -21,8 +21,7 @@ help: ## Show Help
 dep: ## Get build dependencies
 	go get -v -u github.com/golang/dep/cmd/dep; \
 	go get github.com/mitchellh/gox; \
-	go get github.com/mattn/goveralls; \
-	go install golang.org/x/lint/golint;
+	go get github.com/mattn/goveralls; 
 
 lint: ## lint the code
 	@hash golint > /dev/null 2>&1; if [ $$? -ne 0 ]; then \
@@ -38,11 +37,8 @@ fmt-check: ## check for formatting issues
 		exit 1; \
 	fi;
 
-build: ## Build the app
+build: ## Build Godim
 	dep ensure && go build
-
-# cross-build: ## Build the app for multiple os/arch
-#     gox -osarch=$(OSARCH) -output "bin/blackbeard_{{.OS}}_{{.Arch}}"
 
 test: ## Launch tests
 	go test -v ./…
