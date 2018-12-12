@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/ekino/godim.svg)](https://travis-ci.org/ekino/godim)
+[![codecov](https://codecov.io/gh/ekino/godim/branch/master/graph/badge.svg)](https://codecov.io/gh/ekino/godim)
 
 # godim - Go Dependency injection management 
 ## Version
