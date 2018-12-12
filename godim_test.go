@@ -86,7 +86,7 @@ func TestDeclare(t *testing.T) {
 		t.Fatalf("misinjection %+v %+v", a.B, &b)
 	}
 	if !g.lifecycle.current(stRun) {
-		t.Fatalf("Wrong state %s", g.lifecycle.state())
+		t.Fatalf("Wrong state %s", g.lifecycle)
 	}
 	if c.Val != 42 {
 		t.Fatalf("Wrong initialization OnInit")
@@ -97,7 +97,7 @@ func TestDeclare(t *testing.T) {
 	}
 
 	if !g.lifecycle.current(stClose) {
-		t.Fatalf("Wrong state %s", g.lifecycle.state())
+		t.Fatalf("Wrong state %s", g.lifecycle)
 	}
 	if c.Val != 24 {
 		t.Fatalf("no Call to OnClose")

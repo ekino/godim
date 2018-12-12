@@ -53,10 +53,6 @@ func (l *lifecycle) current(st state) bool {
 	return l.currentState == st
 }
 
-func (l *lifecycle) state() string {
-	return l.currentState.String()
-}
-
 func (l *lifecycle) String() string {
-	return l.state()
+	return l.currentState.String()
 }

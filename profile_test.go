@@ -50,3 +50,13 @@ func TestNewHTTPStrict(t *testing.T) {
 		t.Fatalf("strict profile must be locked")
 	}
 }
+
+func TestHttpProfile(t *testing.T) {
+	ap := HTTPAppProfile()
+	if len(ap.profiles) != 3 {
+		t.Fatalf("wrong number of profiles")
+	}
+	if !ap.profiles[s].canBeInjectedIn(s) {
+		t.Fatalf("services should be injected in services")
+	}
+}
