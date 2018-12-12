@@ -15,10 +15,7 @@ install:
   - make build 
 
 script:
-  # - make lint
   - make fmt-check
   - make test
-
- after_success:
+after_success:
    - bash <(curl -s https://codecov.io/bash)
-  
