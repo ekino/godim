@@ -56,4 +56,73 @@ done :myuserKey
 
 ### Advanced usage
 
-TODO ;-)
+#### Name it
+
+Implementing Identifier interface allows godim to know how you want to name your struct
+
+````go
+type Identifier interface {
+	Key() string
+}
+````
+By default, naming convention will use class definition.
+For instance :
+
+````go
+package main
+
+type UserService struct {
+
+}
+````
+will have a name : main.UserService
+
+#### Profile
+
+You can define policies on how you want to enforce linking of your different layer.
+For instance StrictHTTPProfile will define 3 kinds of layers:
+- handler
+- service
+- repository
+with a strict linking between them : repository can be injected in service, service can be injected in handler, all others possibilities are prohibited
+
+#### AutoConfiguration
+
+Providing to Godim a function like this one
+
+````go
+func configFunc (key string, kind reflect.Kind) (interface{}, error) {
+...
+}
+````
+will allow configuration parameters to be injected directly in your structs throu config tag
+for now, only string and int64 are implemented
+
+#### Specific initialization or closing
+
+It is sometimes useful to initialize some things like connection to db during the life of the your app 
+Two interfaces can be implemented for struct that needs specific 
+````go
+type Initializer interface {
+	OnInit() error
+}
+type Closer interface {
+	OnClose() error
+}
+`````
+
+OnInit will be called after configuration and injection phases.
+OnClose will be called when you close your app 
+````go 
+godim.CloseApp() 
+````
+
+### Lifecycle order
+
+The current lifecycle order of godim will go through
+- Declaration phase. use godim.Declare(...)
+- Configuration phase, take all your config tags and fill them 
+- Injection phase, take all your injection tags and link them
+- Initialization phase, call all OnInit() func declared
+- Running phase, your turn
+- Closing phase, call all OnClose() func declared
