@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/ekino/godim.svg)](https://travis-ci.org/ekino/godim)
 [![codecov](https://codecov.io/gh/ekino/godim/branch/master/graph/badge.svg)](https://codecov.io/gh/ekino/godim)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ekino/godim)](https://goreportcard.com/report/github.com/ekino/godim)
 
 # godim - Go Dependency injection management 
 ## Version
@@ -84,6 +85,7 @@ For instance StrictHTTPProfile will define 3 kinds of layers:
 - handler
 - service
 - repository
+
 with a strict linking between them : repository can be injected in service, service can be injected in handler, all others possibilities are prohibited
 
 #### AutoConfiguration

@@ -20,7 +20,7 @@ type AppProfile struct {
 //
 // It holds the possible dependency tree in order to validate non-cycling app
 //
-// injection exemple :
+// injection example :
 // type UserService struct {
 //     userRepository *UserRepository inject:"repository:UserRepository"
 // }
