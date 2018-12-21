@@ -15,7 +15,7 @@ type Config struct {
 	injectString   string
 	configString   string
 	appProfile     *AppProfile
-	configFunction func(key string, kind reflect.Kind) (interface{}, error)
+	configFunction func(key string, val reflect.Value) (interface{}, error)
 }
 
 // NewConfig declare a new config
@@ -66,7 +66,7 @@ func (c *Config) WithAppProfile(ap *AppProfile) *Config {
 }
 
 // WithConfigurationFunction declare your configuration function
-func (c *Config) WithConfigurationFunction(f func(key string, kind reflect.Kind) (interface{}, error)) *Config {
+func (c *Config) WithConfigurationFunction(f func(key string, val reflect.Value) (interface{}, error)) *Config {
 	c.configFunction = f
 	return c
 }

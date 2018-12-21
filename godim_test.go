@@ -104,7 +104,7 @@ func TestDeclare(t *testing.T) {
 	}
 }
 
-func conf(key string, kind reflect.Kind) (interface{}, error) {
+func conf(key string, val reflect.Value) (interface{}, error) {
 
 	if key == "myint.key" {
 		var i int64

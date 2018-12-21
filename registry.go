@@ -153,7 +153,7 @@ func (registry *Registry) getTagConfig(typ reflect.Type) *TagConfig {
 	return tc
 }
 
-func (registry *Registry) configure(f func(key string, kind reflect.Kind) (interface{}, error)) error {
+func (registry *Registry) configure(f func(key string, val reflect.Value) (interface{}, error)) error {
 	for _, mv := range registry.values {
 		if mv == nil {
 			continue
@@ -166,7 +166,7 @@ func (registry *Registry) configure(f func(key string, kind reflect.Kind) (inter
 			}
 			elem := reflect.ValueOf(h.o).Elem()
 			for fieldname, key := range tc.configs {
-				err := setField(elem, fieldname, key, f)
+				err := setFieldOnValue(elem, fieldname, key, f)
 				if err != nil {
 					return err
 				}
@@ -176,10 +176,10 @@ func (registry *Registry) configure(f func(key string, kind reflect.Kind) (inter
 	return nil
 }
 
-func setField(v reflect.Value, fieldname, key string, f func(key string, kind reflect.Kind) (interface{}, error)) error {
+func setFieldOnValue(v reflect.Value, fieldname, key string, f func(key string, val reflect.Value) (interface{}, error)) error {
 	field := v.FieldByName(fieldname)
 	kind := field.Kind()
-	toSet, err := f(key, kind)
+	toSet, err := f(key, field)
 	if err != nil {
 		return err
 	}

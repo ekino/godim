@@ -4,10 +4,17 @@
 
 package godim
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
+
+func configForTest(key string, val reflect.Value) (interface{}, error) {
+	return nil, nil
+}
 
 func TestFullConfig(t *testing.T) {
-	g := NewConfig().WithInjectString("in").WithConfigString("conf").Build()
+	g := NewConfig().WithInjectString("in").WithConfigString("conf").WithConfigurationFunction(configForTest).Build()
 	if g.registry.inject != "in" {
 		t.Fatalf("wrong inject configuration")
 	}
@@ -16,5 +23,18 @@ func TestFullConfig(t *testing.T) {
 	}
 	if g.registry.appProfile == nil {
 		t.Fatalf("AppProfile not defined")
+	}
+	if reflect.TypeOf(g.configFunction) != reflect.TypeOf(configForTest) {
+		t.Fatalf("Wrong config function")
+	}
+}
+
+func TestWrongStrings(t *testing.T) {
+	g := NewConfig().WithInjectString("").WithConfigString("").Build()
+	if g.registry.inject != "inject" {
+		t.Fatalf("wrong inject configuration")
+	}
+	if g.registry.config != "config" {
+		t.Fatalf("wrong config configuration")
 	}
 }

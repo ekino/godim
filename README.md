@@ -17,7 +17,10 @@ A little example is sometimes better than a full explanation
 ````go
 package main
 
-import "github.com/ekino/godim"
+import (
+  "github.com/ekino/godim"
+  "fmt"
+)
 
 type MyHandler struct {
   UserService *UserService `inject:"main.UserService"`

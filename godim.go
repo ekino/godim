@@ -13,7 +13,7 @@ import (
 type Godim struct {
 	lifecycle      *lifecycle
 	registry       *Registry
-	configFunction func(key string, kind reflect.Kind) (interface{}, error)
+	configFunction func(key string, val reflect.Value) (interface{}, error)
 }
 
 // Default build a default godim from default configuration
