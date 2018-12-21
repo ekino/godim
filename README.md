@@ -4,7 +4,7 @@
 
 # godim - Go Dependency injection management 
 ## Version
-v0.1 - Alpha Version - Everything may change
+v0.2 - Alpha Version - Everything may change
 
 ## Features
   * Lifecycle management
@@ -96,7 +96,7 @@ with a strict linking between them : repository can be injected in service, serv
 Providing to Godim a function like this one
 
 ````go
-func configFunc (key string, kind reflect.Kind) (interface{}, error) {
+func configFunc (key string, value reflect.Value) (interface{}, error) {
 ...
 }
 ````
