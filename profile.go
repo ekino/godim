@@ -56,11 +56,14 @@ func newAppProfile() *AppProfile {
 //
 // - repository : manage data access
 //
+// - driver : manage resource driver
+//
 func StrictHTTPAppProfile() *AppProfile {
 	app := newAppProfile()
 	app.AddProfileDef("handler")
 	app.AddProfileDef("service", "handler")
 	app.AddProfileDef("repository", "service")
+	app.AddProfileDef("driver", "repository")
 	app.locked = true
 	return app
 }

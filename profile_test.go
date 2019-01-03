@@ -12,11 +12,12 @@ const (
 	h = "handler"
 	s = "service"
 	r = "repository"
+	d = "driver"
 )
 
 func TestNewHTTPStrict(t *testing.T) {
 	ap := StrictHTTPAppProfile()
-	if len(ap.profiles) != 3 {
+	if len(ap.profiles) != 4 {
 		t.Fatalf("wrong number of profiles")
 	}
 	if ap.profiles[h].canBeInjectedIn(s) {
@@ -45,6 +46,12 @@ func TestNewHTTPStrict(t *testing.T) {
 	}
 	if ap.profiles[r].canBeInjectedIn(r) {
 		t.Fatalf("repository can't be injected in repositories")
+	}
+	if !ap.profiles[d].canBeInjectedIn(r) {
+		t.Fatalf("driver must be injectable in repository")
+	}
+	if ap.profiles[d].canBeInjectedIn(s) || ap.profiles[d].canBeInjectedIn(d) || ap.profiles[d].canBeInjectedIn(h) {
+		t.Fatalf("driver can't be injected anywhere else than repository")
 	}
 	if !ap.isLocked() {
 		t.Fatalf("strict profile must be locked")
