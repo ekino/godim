@@ -136,3 +136,8 @@ func (godim *Godim) CloseApp() error {
 	}
 	return nil
 }
+
+// GetStruct return the stored struct in case it is needed for other usage
+func (godim *Godim) GetStruct(label, key string) interface{} {
+	return godim.registry.getElement(label, key)
+}
