@@ -33,15 +33,19 @@ func TestDefaultGodim(t *testing.T) {
 }
 
 type A struct {
-	B   *B     `inject:"service:godim.B"`
+	B   *B     `inject:"service:bbb"`
 	Lab string `config:"lab.key"`
 }
 
 type B struct {
 }
 
+func (b *B) Key() string {
+	return "bbb"
+}
+
 type C struct {
-	B     *B    `inject:"service:godim.B"`
+	B     *B    `inject:"service:bbb"`
 	Myint int64 `config:"myint.key"`
 	Val   int
 }
@@ -71,6 +75,13 @@ func TestDeclare(t *testing.T) {
 	}
 	fmt.Println("configuration phase")
 	err = g.RunApp()
+
+	ob := g.GetStruct("service", "bbb")
+
+	if ob == nil {
+		t.Fatalf("must have retrieve service b")
+	}
+
 	if err != nil {
 		t.Fatalf(" error while configuring %s \n", err)
 	}

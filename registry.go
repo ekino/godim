@@ -207,7 +207,7 @@ func (registry *Registry) injection() error {
 			for fieldname, key := range tc.injects {
 				elts := strings.Split(key, ":")
 				toInject := registry.getElement(elts[0], elts[1])
-				fmt.Printf("toinject : %+v \n", toInject)
+
 				if toInject != nil {
 					elem.FieldByName(fieldname).Set(reflect.ValueOf(toInject))
 				}
