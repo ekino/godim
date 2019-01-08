@@ -33,25 +33,51 @@ func TestDefaultGodim(t *testing.T) {
 }
 
 type A struct {
-	B   *B     `inject:"service:bbb"`
-	Lab string `config:"lab.key"`
+	B              *B     `inject:"service:bbb"`
+	Lab            string `config:"lab.key"`
+	PreInitialized string
+}
+
+func (a *A) Priority() int {
+	return -10
+}
+
+func (a *A) OnInit() error {
+	if a.B.Initialized == "yes" {
+		a.PreInitialized = "yes"
+	} else {
+		a.PreInitialized = "no"
+	}
+	return nil
 }
 
 type B struct {
+	Initialized string
 }
 
 func (b *B) Key() string {
 	return "bbb"
 }
 
+func (b *B) OnInit() error {
+	b.Initialized = "yes"
+	return nil
+}
+
+func (b *B) Priority() int {
+	return -1
+}
+
 type C struct {
-	B     *B    `inject:"service:bbb"`
-	Myint int64 `config:"myint.key"`
-	Val   int
+	B              *B    `inject:"service:bbb"`
+	Myint          int64 `config:"myint.key"`
+	Val            int
+	PreInitialized string
 }
 
 func (c *C) OnInit() error {
 	c.Val = 42
+	c.PreInitialized = c.B.Initialized
 	return nil
 }
 
@@ -112,6 +138,19 @@ func TestDeclare(t *testing.T) {
 	}
 	if c.Val != 24 {
 		t.Fatalf("no Call to OnClose")
+	}
+
+	// Check initialization priorities
+	if b.Initialized != "yes" {
+		t.Fatalf("b OnInit not called")
+	}
+
+	if a.PreInitialized == "yes" {
+		t.Fatalf("a priority not respected in regard to b")
+	}
+
+	if c.PreInitialized != "yes" {
+		t.Fatalf("b Priority not respected")
 	}
 }
 

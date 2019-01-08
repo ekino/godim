@@ -7,12 +7,14 @@ package godim
 import (
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 )
 
 const (
-	defaultInject = "inject"
-	defaultConfig = "config"
+	defaultInject   = "inject"
+	defaultConfig   = "config"
+	defaultPriority = 0
 )
 
 // Registry the internal registry
@@ -22,13 +24,14 @@ type Registry struct {
 	appProfile *AppProfile
 	values     map[string]map[string]*holder
 	tags       map[reflect.Type]*TagConfig
-	inits      map[reflect.Type]reflect.Value
+	inits      map[int]map[reflect.Type]reflect.Value
 	closers    map[reflect.Type]reflect.Value
 }
 
 type holder struct {
-	o   interface{}
-	typ reflect.Type
+	o    interface{}
+	typ  reflect.Type
+	prio int
 }
 
 // TagConfig internal configuration tag
@@ -44,7 +47,7 @@ func newRegistry() *Registry {
 		appProfile: newAppProfile(),
 		values:     make(map[string]map[string]*holder),
 		tags:       make(map[reflect.Type]*TagConfig),
-		inits:      make(map[reflect.Type]reflect.Value),
+		inits:      make(map[int]map[reflect.Type]reflect.Value),
 		closers:    make(map[reflect.Type]reflect.Value),
 	}
 }
@@ -56,7 +59,7 @@ func newRegistryFromConfig(config *Config) *Registry {
 		appProfile: config.appProfile,
 		values:     make(map[string]map[string]*holder),
 		tags:       make(map[reflect.Type]*TagConfig),
-		inits:      make(map[reflect.Type]reflect.Value),
+		inits:      make(map[int]map[reflect.Type]reflect.Value),
 		closers:    make(map[reflect.Type]reflect.Value),
 	}
 }
@@ -78,11 +81,12 @@ func (registry *Registry) declare(label string, o interface{}) error {
 		registry.values[label] = v
 	}
 	key := getKey(typ, o)
+	prio := getPriority(typ, o)
 	_, ok = v[key]
 	if ok {
 		return newError(fmt.Errorf(" %s already defined in registry", o)).SetErrType(ErrTypeRegistry)
 	}
-	v[key] = &holder{o: o, typ: typ}
+	v[key] = &holder{o: o, typ: typ, prio: prio}
 	err := registry.declareTags(typ, label)
 	if err != nil {
 		return err
@@ -94,6 +98,7 @@ var (
 	initType  = reflect.TypeOf((*Initializer)(nil)).Elem()
 	closeType = reflect.TypeOf((*Closer)(nil)).Elem()
 	keyType   = reflect.TypeOf((*Identifier)(nil)).Elem()
+	prioType  = reflect.TypeOf((*Prioritizer)(nil)).Elem()
 )
 
 func getKey(typ reflect.Type, o interface{}) string {
@@ -105,14 +110,29 @@ func getKey(typ reflect.Type, o interface{}) string {
 	return typ.String()
 }
 
+func getPriority(typ reflect.Type, o interface{}) int {
+	ptyp := reflect.PtrTo(typ)
+	ok := typ.Implements(prioType)
+	if ptyp.Implements(prioType) || ok {
+		return reflect.ValueOf(o).MethodByName("Priority").Call([]reflect.Value{})[0].Interface().(int)
+	}
+	return defaultPriority
+}
+
 func (registry *Registry) declareInterfaces(o interface{}, typ reflect.Type) error {
-	_, exists := registry.inits[typ]
+	prio := getPriority(typ, o)
+	_, exists := registry.inits[prio][typ]
 	if exists {
 		return newError(fmt.Errorf("OnInit Method already declared for type %s", typ)).SetErrType(ErrTypeRegistry)
 	}
 	ptyp := reflect.PtrTo(typ)
 	if ptyp.Implements(initType) {
-		registry.inits[typ] = reflect.ValueOf(o).MethodByName("OnInit")
+		v, ok := registry.inits[prio]
+		if !ok {
+			v = make(map[reflect.Type]reflect.Value)
+			registry.inits[prio] = v
+		}
+		registry.inits[prio][typ] = reflect.ValueOf(o).MethodByName("OnInit")
 	}
 	if ptyp.Implements(closeType) {
 		registry.closers[typ] = reflect.ValueOf(o).MethodByName("OnClose")
@@ -207,7 +227,6 @@ func (registry *Registry) injection() error {
 			for fieldname, key := range tc.injects {
 				elts := strings.Split(key, ":")
 				toInject := registry.getElement(elts[0], elts[1])
-
 				if toInject != nil {
 					elem.FieldByName(fieldname).Set(reflect.ValueOf(toInject))
 				}
@@ -232,12 +251,23 @@ func (registry *Registry) getElement(label, key string) interface{} {
 }
 
 func (registry *Registry) initializeAll() error {
-	for _, m := range registry.inits {
-		ret := m.Call([]reflect.Value{})
-		if len(ret) > 0 {
-			err := ret[0]
-			if !err.IsNil() {
-				return err.Interface().(error)
+	// Sort by priority
+	priorities := make([]int, len(registry.inits))
+	i := 0
+	for k := range registry.inits {
+		priorities[i] = k
+		i++
+	}
+	sort.Ints(priorities)
+
+	for _, p := range priorities {
+		for _, m := range registry.inits[p] {
+			ret := m.Call([]reflect.Value{})
+			if len(ret) > 0 {
+				err := ret[0]
+				if !err.IsNil() {
+					return err.Interface().(error)
+				}
 			}
 		}
 	}

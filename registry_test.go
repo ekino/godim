@@ -166,3 +166,50 @@ func TestGetKey(t *testing.T) {
 	}
 
 }
+
+type Prioritized struct {
+	Initiated bool
+}
+
+func (p *Prioritized) OnInit() error {
+	p.Initiated = true
+	return nil
+}
+
+type NotPrioritized struct {
+	Prio        *Prioritized
+	InitCounter int
+}
+
+func (np *NotPrioritized) Priority() int {
+	return 10
+}
+
+func (np *NotPrioritized) OnInit() error {
+	np.InitCounter++
+	if np.Prio.Initiated {
+		np.InitCounter++
+	}
+	return nil
+}
+
+func TestPriorization(t *testing.T) {
+	r := newRegistry()
+	r.appProfile = StrictHTTPAppProfile()
+	p := Prioritized{Initiated: false}
+	pt := reflect.TypeOf(p)
+	_ = r.declareInterfaces(&p, pt)
+
+	np := NotPrioritized{Prio: &p, InitCounter: 0}
+	npt := reflect.TypeOf(np)
+	_ = r.declareInterfaces(&np, npt)
+
+	_ = r.initializeAll()
+
+	if !p.Initiated {
+		t.Fatalf("OnInit has not been called")
+	}
+	if np.InitCounter != 2 {
+		t.Fatalf("Priorization didn't work as expected")
+	}
+}

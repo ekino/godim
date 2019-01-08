@@ -24,3 +24,10 @@ type Closer interface {
 type Identifier interface {
 	Key() string
 }
+
+// Prioritizer interface to implement if you want to change the initialization order of your service.
+//
+// Priority is the score that will determine when this service will be instantiated comparing to the others. Default priority is 0. Lower is sooner.
+type Prioritizer interface {
+	Priority() int
+}
