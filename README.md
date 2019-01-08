@@ -4,7 +4,7 @@
 
 # godim - Go Dependency injection management 
 ## Version
-v0.2 - Alpha Version - Everything may change
+v0.3 - Alpha Version - Everything may change
 
 ## Features
   * Lifecycle management
@@ -131,3 +131,14 @@ The current lifecycle order of godim will go through
 - Initialization phase, call all OnInit() func declared
 - Running phase, your turn
 - Closing phase, call all OnClose() func declared
+
+#### Initialization priorization
+
+You can handle the OnInit order if you need to, by implementing the following interface in your struct:
+```go
+type Prioritizer interface {
+	Priority() int
+}
+```
+
+Default priority is set to 0, by implementing this function you can say if you want to execute the OnInit method sooner (by returning a lower value) or later (with a higher value).
