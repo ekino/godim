@@ -101,7 +101,7 @@ func configFunc (key string, value reflect.Value) (interface{}, error) {
 }
 ````
 will allow configuration parameters to be injected directly in your structs throu config tag
-for now, only string and int64 are implemented
+see [Godim-Viper](https://github.com/ekino/godim-viper) for an implementation of this function with Viper.
 
 #### Specific initialization or closing
 
