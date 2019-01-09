@@ -198,19 +198,11 @@ func (registry *Registry) configure(f func(key string, val reflect.Value) (inter
 
 func setFieldOnValue(v reflect.Value, fieldname, key string, f func(key string, val reflect.Value) (interface{}, error)) error {
 	field := v.FieldByName(fieldname)
-	kind := field.Kind()
 	toSet, err := f(key, field)
 	if err != nil {
 		return err
 	}
-	switch kind {
-	case reflect.String:
-		field.SetString(toSet.(string))
-	case reflect.Int64:
-		field.SetInt(toSet.(int64))
-	case reflect.Bool:
-		field.SetBool(toSet.(bool))
-	}
+	field.Set(reflect.ValueOf(toSet))
 	return nil
 }
 
