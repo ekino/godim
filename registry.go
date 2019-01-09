@@ -208,6 +208,8 @@ func setFieldOnValue(v reflect.Value, fieldname, key string, f func(key string, 
 		field.SetString(toSet.(string))
 	case reflect.Int64:
 		field.SetInt(toSet.(int64))
+	case reflect.Bool:
+		field.SetBool(toSet.(bool))
 	}
 	return nil
 }
