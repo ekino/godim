@@ -154,7 +154,7 @@ func TestGetKey(t *testing.T) {
 	tc := &TestConfig{}
 	typ := reflect.TypeOf(tc).Elem()
 	key := getKey(typ, tc)
-	if key != "godim.TestConfig" {
+	if key != "TestConfig" {
 		t.Fatalf("Wrong key retrieval %s", key)
 	}
 

@@ -23,7 +23,7 @@ import (
 )
 
 type MyHandler struct {
-  UserService *UserService `inject:"main.UserService"`
+  UserService *UserService `inject:"UserService"`
 }
 
 func (mh *MyHandler) doIt() {

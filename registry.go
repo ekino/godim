@@ -107,7 +107,7 @@ func getKey(typ reflect.Type, o interface{}) string {
 	if ptyp.Implements(keyType) || ok {
 		return reflect.ValueOf(o).MethodByName("Key").Call([]reflect.Value{})[0].Interface().(string)
 	}
-	return typ.String()
+	return strings.Split(typ.String(), ".")[1]
 }
 
 func getPriority(typ reflect.Type, o interface{}) int {

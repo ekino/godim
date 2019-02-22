@@ -1,5 +1,9 @@
 # CHANGELOG
 
+### Godim v0.3.0-Dev
+- [NEW] Add ordering for OnInit call
+- [CHG] Change default behavior on key name : remove package name
+
 ### Godim v0.2.0-Dev
 - [FIX] Change config function definition
 - [FIX] More coverage&tests
