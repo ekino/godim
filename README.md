@@ -4,12 +4,14 @@
 
 # godim - Go Dependency injection management 
 ## Version
-v0.3 - Alpha Version - Everything may change
+v0.4 - Alpha Version - Everything may change
 
 ## Features
   * Lifecycle management
   * Simple Tag Declaration and injection
   * Configuration injection
+  * Event exchange throu the application
+  
 ## Usage
 Godim use tags to inject configuration and dependencies in a struct.
 ### Default Usage
@@ -181,4 +183,3 @@ type EventReceiver interface {
 
 the HandleEventTypes method defines the subscribe events type by this receiver.
 the ReceiveEvent will receive all events of type declared in the previous method.
- 
