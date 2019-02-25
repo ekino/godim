@@ -142,3 +142,43 @@ type Prioritizer interface {
 ```
 
 Default priority is set to 0, by implementing this function you can say if you want to execute the OnInit method sooner (by returning a lower value) or later (with a higher value).
+
+### Event Switch
+
+Godim comes with an event switch that enable Event to be emitted from anywhere and received everywhere.
+The definition of events Type throu the application is static, there is no dynamic declaration during the run lifecycle.
+
+An Event looks like 
+
+```go
+type Event struct {
+  Type string
+  Payload map[string]interface{}
+}
+```
+
+You need to consider events as immutable object (Read Only), as they can be accessed concurrently. But there is no protection against write in go yet
+
+To emit an event your struct can implement EventEmitter and call Emit to send the event
+
+```go
+type MyStruct struct {
+  EventEmitter
+}
+...
+myStruct := &MyStruct{}
+myStruct.Emit(&Event{Type:"a"})
+```
+
+To subscribe to an event you need to implements EventReceiver interface in your struct 
+
+```go
+type EventReceiver interface {
+	ReceiveEvent(*Event)
+	HandleEventTypes() []string
+}
+```
+
+the HandleEventTypes method defines the subscribe events type by this receiver.
+the ReceiveEvent will receive all events of type declared in the previous method.
+ 

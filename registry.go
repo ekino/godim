@@ -19,13 +19,14 @@ const (
 
 // Registry the internal registry
 type Registry struct {
-	inject     string
-	config     string
-	appProfile *AppProfile
-	values     map[string]map[string]*holder
-	tags       map[reflect.Type]*TagConfig
-	inits      map[int]map[reflect.Type]reflect.Value
-	closers    map[reflect.Type]reflect.Value
+	inject      string
+	config      string
+	appProfile  *AppProfile
+	values      map[string]map[string]*holder
+	tags        map[reflect.Type]*TagConfig
+	inits       map[int]map[reflect.Type]reflect.Value
+	closers     map[reflect.Type]reflect.Value
+	eventSwitch *EventSwitch
 }
 
 type holder struct {
@@ -53,7 +54,7 @@ func newRegistry() *Registry {
 }
 
 func newRegistryFromConfig(config *Config) *Registry {
-	return &Registry{
+	r := &Registry{
 		inject:     config.injectString,
 		config:     config.configString,
 		appProfile: config.appProfile,
@@ -62,6 +63,10 @@ func newRegistryFromConfig(config *Config) *Registry {
 		inits:      make(map[int]map[reflect.Type]reflect.Value),
 		closers:    make(map[reflect.Type]reflect.Value),
 	}
+	if config.activateES {
+		r.eventSwitch = config.eventSwitch
+	}
+	return r
 }
 
 func (registry *Registry) declare(label string, o interface{}) error {
@@ -99,6 +104,8 @@ var (
 	closeType = reflect.TypeOf((*Closer)(nil)).Elem()
 	keyType   = reflect.TypeOf((*Identifier)(nil)).Elem()
 	prioType  = reflect.TypeOf((*Prioritizer)(nil)).Elem()
+	emitType  = reflect.TypeOf((*Emitter)(nil)).Elem()
+	recType   = reflect.TypeOf((*EventReceiver)(nil)).Elem()
 )
 
 func getKey(typ reflect.Type, o interface{}) string {
@@ -136,6 +143,14 @@ func (registry *Registry) declareInterfaces(o interface{}, typ reflect.Type) err
 	}
 	if ptyp.Implements(closeType) {
 		registry.closers[typ] = reflect.ValueOf(o).MethodByName("OnClose")
+	}
+	if registry.eventSwitch != nil {
+		if ptyp.Implements(emitType) {
+			registry.eventSwitch.AddEmitter(o.(Emitter))
+		}
+		if ptyp.Implements(recType) {
+			registry.eventSwitch.AddReceiver(o.(EventReceiver))
+		}
 	}
 	return nil
 }

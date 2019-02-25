@@ -16,6 +16,9 @@ type Config struct {
 	configString   string
 	appProfile     *AppProfile
 	configFunction func(key string, val reflect.Value) (interface{}, error)
+	activateES     bool
+	bufferSize     int
+	eventSwitch    *EventSwitch
 }
 
 // NewConfig declare a new config
@@ -23,6 +26,7 @@ func NewConfig() *Config {
 	return &Config{
 		injectString: defaultInject,
 		configString: defaultConfig,
+		activateES:   false,
 	}
 }
 
@@ -32,6 +36,7 @@ func DefaultConfig() *Config {
 		injectString: defaultInject,
 		configString: defaultConfig,
 		appProfile:   newAppProfile(),
+		activateES:   false,
 	}
 }
 
@@ -71,11 +76,21 @@ func (c *Config) WithConfigurationFunction(f func(key string, val reflect.Value)
 	return c
 }
 
+// WithEventSwitch start an event switch with godim
+func (c *Config) WithEventSwitch(bufferSize int) *Config {
+	c.activateES = true
+	c.bufferSize = bufferSize
+	return c
+}
+
 // Build lock profile and build godim
 func (c *Config) Build() *Godim {
 	if c.appProfile == nil {
 		c.appProfile = newAppProfile()
 	}
 	c.appProfile.lock()
+	if c.activateES {
+		c.eventSwitch = NewEventSwitch(c.bufferSize)
+	}
 	return NewGodim(c)
 }

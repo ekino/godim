@@ -14,6 +14,7 @@ type Godim struct {
 	lifecycle      *lifecycle
 	registry       *Registry
 	configFunction func(key string, val reflect.Value) (interface{}, error)
+	eventSwitch    *EventSwitch
 }
 
 // Default build a default godim from default configuration
@@ -27,6 +28,9 @@ func NewGodim(config *Config) *Godim {
 	g.lifecycle = newLifecycle()
 	g.registry = newRegistryFromConfig(config)
 	g.configFunction = config.configFunction
+	if config.activateES {
+		g.eventSwitch = config.eventSwitch
+	}
 	return &g
 }
 
@@ -121,6 +125,9 @@ func (godim *Godim) RunApp() error {
 	// Run phase
 	if godim.lifecycle.current(stInitialization) {
 		godim.lifecycle.currentState++
+		if godim.eventSwitch != nil {
+			godim.eventSwitch.Start()
+		}
 	}
 	return nil
 }
@@ -133,6 +140,10 @@ func (godim *Godim) CloseApp() error {
 			return err
 		}
 		godim.lifecycle.currentState++
+	}
+	// Closing event switch if enable
+	if godim.eventSwitch != nil {
+		godim.eventSwitch.Close()
 	}
 	return nil
 }

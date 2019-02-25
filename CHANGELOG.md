@@ -1,5 +1,8 @@
 # CHANGELOG
 
+### Godim v0.4.0-Dev
+- [NEW] Add basic godim event hub/switch functionnality
+
 ### Godim v0.3.0-Dev
 - [NEW] Add ordering for OnInit call
 - [CHG] Change default behavior on key name : remove package name

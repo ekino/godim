@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"time"
 )
 
 type Bidule struct{}
@@ -165,4 +166,59 @@ func conf(key string, val reflect.Value) (interface{}, error) {
 		return "bid", nil
 	}
 	return nil, fmt.Errorf("unknow key %s", key)
+}
+
+type EA struct {
+	EventEmitter
+}
+
+type RA struct {
+	nbReceived int
+}
+
+func (ra *RA) OnInit() error {
+	ra.nbReceived = 0
+	return nil
+}
+
+func (ra *RA) HandleEventTypes() []string {
+	return []string{
+		"aa",
+	}
+}
+func (ra *RA) ReceiveEvent(e *Event) {
+	ra.nbReceived = ra.nbReceived + 1
+}
+
+func TestWithEventSwitch(t *testing.T) {
+	g := NewConfig().WithAppProfile(StrictHTTPAppProfile()).
+		WithConfigurationFunction(conf).
+		WithEventSwitch(10).
+		Build()
+	ea := new(EA)
+	ra := new(RA)
+	err := g.Declare("service", ea, ra)
+	if err != nil {
+		t.Fatal("Error while declaring service:", err)
+	}
+
+	err = g.RunApp()
+
+	for i := 0; i < 100; i++ {
+		e := &Event{
+			Type: "aa",
+		}
+		ea.Emit(e)
+		time.Sleep(1 * time.Millisecond)
+	}
+
+	time.Sleep(5 * time.Millisecond)
+	if ra.nbReceived != 100 {
+		t.Fatal("wrong number of event received", ra.nbReceived)
+	}
+	g.CloseApp()
+	time.Sleep(1 * time.Millisecond)
+	if g.eventSwitch.running {
+		t.Fatal("eventswitch not closed")
+	}
 }
