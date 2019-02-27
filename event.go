@@ -3,6 +3,7 @@ package godim
 import (
 	"errors"
 	"log"
+	"runtime"
 )
 
 // Event an Event can be transmitted from an Emitter to any Receiver
@@ -122,9 +123,21 @@ func (es *EventSwitch) switchEvent(event *Event) {
 	rs, ok := es.receivers[event.Type]
 	if ok {
 		for _, receiver := range rs {
-			go receiver.ReceiveEvent(event)
+			go es.runObserverWithRecover(receiver, event)
 		}
 	} else {
 		log.Println("an event is declared with no subscribers :", event.Type)
 	}
+}
+
+func (es *EventSwitch) runObserverWithRecover(receiver EventReceiver, event *Event) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			const size = 64 << 10
+			buffer := make([]byte, size)
+			buffer = buffer[:runtime.Stack(buffer, false)]
+			log.Printf("cron: panic running job: %v\n%s", rec, buffer)
+		}
+	}()
+	receiver.ReceiveEvent(event)
 }
