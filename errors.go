@@ -16,6 +16,8 @@ const (
 	ErrTypeRegistry ErrType = 1 << 61
 	// ErrTypeGodim happens in internal godim failure
 	ErrTypeGodim ErrType = 1 << 60
+	// ErrTypeEvent happens in internal event switch
+	ErrTypeEvent ErrType = 1 << 59
 	// ErrTypeAny for any other kind of errors
 	ErrTypeAny ErrType = 1 << 1
 )

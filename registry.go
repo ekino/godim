@@ -100,12 +100,13 @@ func (registry *Registry) declare(label string, o interface{}) error {
 }
 
 var (
-	initType  = reflect.TypeOf((*Initializer)(nil)).Elem()
-	closeType = reflect.TypeOf((*Closer)(nil)).Elem()
-	keyType   = reflect.TypeOf((*Identifier)(nil)).Elem()
-	prioType  = reflect.TypeOf((*Prioritizer)(nil)).Elem()
-	emitType  = reflect.TypeOf((*Emitter)(nil)).Elem()
-	recType   = reflect.TypeOf((*EventReceiver)(nil)).Elem()
+	initType      = reflect.TypeOf((*Initializer)(nil)).Elem()
+	closeType     = reflect.TypeOf((*Closer)(nil)).Elem()
+	keyType       = reflect.TypeOf((*Identifier)(nil)).Elem()
+	prioType      = reflect.TypeOf((*Prioritizer)(nil)).Elem()
+	emitType      = reflect.TypeOf((*Emitter)(nil)).Elem()
+	recType       = reflect.TypeOf((*EventReceiver)(nil)).Elem()
+	interceptType = reflect.TypeOf((*EventInterceptor)(nil)).Elem()
 )
 
 func getKey(typ reflect.Type, o interface{}) string {
@@ -150,6 +151,9 @@ func (registry *Registry) declareInterfaces(o interface{}, typ reflect.Type) err
 		}
 		if ptyp.Implements(recType) {
 			registry.eventSwitch.AddReceiver(o.(EventReceiver))
+		}
+		if ptyp.Implements(interceptType) {
+			registry.eventSwitch.AddInterceptor(o.(EventInterceptor))
 		}
 	}
 	return nil

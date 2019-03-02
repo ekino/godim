@@ -176,6 +176,10 @@ type RA struct {
 	nbReceived int
 }
 
+func (ra *RA) Key() string {
+	return "RA"
+}
+
 func (ra *RA) OnInit() error {
 	ra.nbReceived = 0
 	return nil
@@ -186,8 +190,26 @@ func (ra *RA) HandleEventTypes() []string {
 		"aa",
 	}
 }
-func (ra *RA) ReceiveEvent(e *Event) {
+func (ra *RA) ReceiveEvent(e *Event) error {
 	ra.nbReceived = ra.nbReceived + 1
+	return nil
+}
+
+type IA struct {
+	nbIntercept int
+}
+
+func (ia *IA) Key() string {
+	return "IA"
+}
+
+func (ia *IA) InterceptPriority() int {
+	return -10
+}
+
+func (ia *IA) Intercept(e *Event) error {
+	ia.nbIntercept = ia.nbIntercept + 1
+	return nil
 }
 
 func TestWithEventSwitch(t *testing.T) {
@@ -197,7 +219,8 @@ func TestWithEventSwitch(t *testing.T) {
 		Build()
 	ea := new(EA)
 	ra := new(RA)
-	err := g.Declare("service", ea, ra)
+	ia := new(IA)
+	err := g.Declare("service", ea, ra, ia)
 	if err != nil {
 		t.Fatal("Error while declaring service:", err)
 	}
@@ -215,6 +238,9 @@ func TestWithEventSwitch(t *testing.T) {
 	time.Sleep(5 * time.Millisecond)
 	if ra.nbReceived != 100 {
 		t.Fatal("wrong number of event received", ra.nbReceived)
+	}
+	if ia.nbIntercept != 100 {
+		t.Fatal("wrong number of event intercepted", ia.nbIntercept)
 	}
 	g.CloseApp()
 	time.Sleep(1 * time.Millisecond)
