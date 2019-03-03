@@ -4,7 +4,7 @@
 
 # godim - Go Dependency injection management 
 ## Version
-v0.4 - Alpha Version - Everything may change
+v0.5 - Alpha Version - Everything may change
 
 ## Features
   * Lifecycle management
