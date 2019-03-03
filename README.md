@@ -147,7 +147,7 @@ Default priority is set to 0, by implementing this function you can say if you w
 
 ### Event Switch
 
-Godim comes with an event switch that enable Event to be emitted from anywhere and received everywhere.
+Godim comes with a simple event switch that enable Event to be emitted from anywhere and received everywhere.
 The definition of events Type throu the application is static, there is no dynamic declaration during the run lifecycle.
 
 An Event looks like 
@@ -172,10 +172,27 @@ myStruct := &MyStruct{}
 myStruct.Emit(&Event{Type:"a"})
 ```
 
+There is 3 ways to observe those events, depending on the phase you want to interact with it.
+After being emitted the event is buffered in the event switch. For each event, a go routine is launched, orchestrate a first level of interaction with EventInterceptor, interceptor have a priority, the lowest the first. During this phase an event can be aborted : it will stop propagation of the event on higher priority of interceptor or receiver. An aborted event will still go throu EventFinalizer if one is declared.
+After orchestration phase, events are transmitted to each receiver in his own go routine in a choregraphic way.
+When all events are managed by all interceptor and receivers, event finish his course in an EventFinalizer.
+
+To intercept an event you need to implements EventInterceptor in your struct
+
+```go
+type EventInterceptor interface {
+	Identifier
+	Intercept(*Event) error
+	InterceptPriority() int
+}
+```
+
+
 To subscribe to an event you need to implements EventReceiver interface in your struct 
 
 ```go
 type EventReceiver interface {
+  Identifier
 	ReceiveEvent(*Event)
 	HandleEventTypes() []string
 }
@@ -183,3 +200,14 @@ type EventReceiver interface {
 
 the HandleEventTypes method defines the subscribe events type by this receiver.
 the ReceiveEvent will receive all events of type declared in the previous method.
+
+EventFinalizer does not interact with event metadata. Typical usage is a final save in a db of the event.
+EventFinalizer interface follow : 
+
+```go
+type EventFinalizer interface {
+	Finalize(*Event)
+}
+```
+
+There can be only one event finalizer in your application.

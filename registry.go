@@ -157,7 +157,7 @@ func (registry *Registry) declareInterfaces(o interface{}, typ reflect.Type) err
 			registry.eventSwitch.AddInterceptor(o.(EventInterceptor))
 		}
 		if ptyp.Implements(finalizerType) {
-
+			registry.eventSwitch.WithEventFinalizer(o.(EventFinalizer))
 		}
 	}
 	return nil
