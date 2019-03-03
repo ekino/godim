@@ -107,6 +107,7 @@ var (
 	emitType      = reflect.TypeOf((*Emitter)(nil)).Elem()
 	recType       = reflect.TypeOf((*EventReceiver)(nil)).Elem()
 	interceptType = reflect.TypeOf((*EventInterceptor)(nil)).Elem()
+	finalizerType = reflect.TypeOf((*EventFinalizer)(nil)).Elem()
 )
 
 func getKey(typ reflect.Type, o interface{}) string {
@@ -154,6 +155,9 @@ func (registry *Registry) declareInterfaces(o interface{}, typ reflect.Type) err
 		}
 		if ptyp.Implements(interceptType) {
 			registry.eventSwitch.AddInterceptor(o.(EventInterceptor))
+		}
+		if ptyp.Implements(finalizerType) {
+
 		}
 	}
 	return nil

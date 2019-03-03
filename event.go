@@ -155,8 +155,7 @@ func (event *Event) setState(key string, state EventState) {
 
 // Emitter The base interface of an emitter
 type Emitter interface {
-	initEmitter(chan *Event, IDGenerator, EventFinalizer)
-	prepareRun(map[string]int)
+	prepareRun(chan *Event, IDGenerator, map[string]int, EventFinalizer)
 	Emit(*Event)
 }
 
@@ -168,15 +167,11 @@ type EventEmitter struct {
 	finalizer      EventFinalizer
 }
 
-// initEmitter initialize event channel and id gen
-func (ee *EventEmitter) initEmitter(e chan *Event, idGen IDGenerator, f EventFinalizer) {
+func (ee *EventEmitter) prepareRun(e chan *Event, idGen IDGenerator, lc map[string]int, f EventFinalizer) {
 	ee.idGenerator = idGen
 	ee.eventChan = e
-	ee.finalizer = f
-}
-
-func (ee *EventEmitter) prepareRun(lc map[string]int) {
 	ee.listenersCount = lc
+	ee.finalizer = f
 }
 
 // Emit emits an event
@@ -317,6 +312,9 @@ func (es *EventSwitch) WithSeed(seed uint64) *EventSwitch {
 
 // WithEventFinalizer declare an event finalizer that will be called at the end of an event management
 func (es *EventSwitch) WithEventFinalizer(f EventFinalizer) *EventSwitch {
+	if es.running {
+		return es
+	}
 	es.eventFinalizer = f
 	return es
 }
@@ -326,7 +324,6 @@ func (es *EventSwitch) AddEmitter(e Emitter) error {
 	if es.running {
 		return newError(errors.New("Can't add an emitter on the fly yet")).SetErrType(ErrTypeEvent)
 	}
-	e.initEmitter(es.mainChain, es.idGenerator, es.eventFinalizer)
 	es.emitters = append(es.emitters, e)
 	return nil
 }
@@ -372,7 +369,7 @@ func (es *EventSwitch) Start() {
 		es.listenerCount[k] = nbInterceptor + len(v)
 	}
 	for _, e := range es.emitters {
-		e.prepareRun(es.listenerCount)
+		e.prepareRun(es.mainChain, es.idGenerator, es.listenerCount, es.eventFinalizer)
 	}
 	es.running = true
 	go es.run()
