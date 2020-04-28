@@ -1,4 +1,4 @@
-SHELL := $(shell which bash) # set default shell
+SHELL := $(shell which bash)
 GOFMT ?= gofmt "-s"
 PACKAGES ?= $(shell go list ./... | grep -v /vendor/)
 GOFILES := $(shell find . -name "*.go" -type f -not -path "./vendor/*")
@@ -19,9 +19,9 @@ help: ## Show Help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 dep: ## Get build dependencies
-	go get -v -u github.com/golang/dep/cmd/dep; \
 	go get github.com/mitchellh/gox; \
-	go get github.com/mattn/goveralls; 
+	go get github.com/mattn/goveralls; \
+	curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
 lint: ## lint the code
 	@hash golint > /dev/null 2>&1; if [ $$? -ne 0 ]; then \
