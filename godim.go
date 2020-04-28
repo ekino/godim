@@ -17,7 +17,7 @@ type Godim struct {
 	eventSwitch    *EventSwitch
 }
 
-// Default build a default godim from default configuration
+// Default build a default Godim from default configuration
 func Default() *Godim {
 	return DefaultConfig().Build()
 }
@@ -134,16 +134,33 @@ func (godim *Godim) RunApp() error {
 
 // CloseApp close all things declared in your app
 func (godim *Godim) CloseApp() error {
+	if err := godim.closeIfRunning(); err != nil {
+		return err
+	}
+
+	if godim.eventSwitch != nil {
+		godim.eventSwitch.Close()
+	}
+
+	return nil
+}
+
+// CloseApp close all things declared in your app
+func (godim *Godim) CloseAppGracefully() error {
+	if godim.eventSwitch != nil {
+		godim.eventSwitch.CloseGracefully()
+	}
+
+	return godim.closeIfRunning()
+}
+
+func (godim *Godim) closeIfRunning() error {
 	if godim.lifecycle.current(stRun) {
 		err := godim.registry.closeAll()
 		if err != nil {
 			return err
 		}
 		godim.lifecycle.currentState++
-	}
-	// Closing event switch if enable
-	if godim.eventSwitch != nil {
-		godim.eventSwitch.Close()
 	}
 	return nil
 }
