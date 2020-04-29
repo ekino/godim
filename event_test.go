@@ -2,270 +2,411 @@ package godim
 
 import (
 	"log"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
 )
 
-type Testeur struct {
+const (
+	EventTypeA = "a"
+	EventTypeB = "b"
+
+	ThrowPanicReceiverKey = "ThrowPanicReceiver"
+)
+
+var AllEventTypes = []string{EventTypeA, EventTypeB}
+
+func TestEventSwitch_Start_shouldHandleIncomingEvents(t *testing.T) {
+	eventSwitch := NewEventSwitch(10)
+
+	emitter := new(SimpleEmitter)
+	eventSwitch.AddEmitter(emitter)
+
+	receiver := newCollectEventIdReceiver()
+	eventSwitch.AddReceiver(receiver)
+
+	eventSwitch.Start()
+
+	for i := 0; i < 100; i++ {
+		emitter.Emit(newEmptyEvent(EventTypeA))
+		time.Sleep(1 * time.Millisecond)
+	}
+	time.Sleep(5 * time.Millisecond)
+
+	if receiver.nbReceived != 100 {
+		t.Fatal("Expecting 100 events but received: ", receiver.nbReceived, ".")
+	}
+
+	if numberOfId := len(receiver.ids); numberOfId != 100 {
+		t.Fatal("Expecting 100 IDs but collected: ", numberOfId, ".")
+	}
+
+	eventSwitch.Close()
+
+	if eventSwitch.running {
+		t.Fatal("EventSwitch is still running despite Close method has been called.")
+	}
+}
+
+func TestEventSwitch_CloseGracefully_shouldWaitForAllEventsToBeProcessed(t *testing.T) {
+	eventSwitch := NewEventSwitch(10)
+
+	emitter := new(SimpleEmitter)
+	eventSwitch.AddEmitter(emitter)
+
+	delayInterceptor := new(DelayInterceptor)
+	eventSwitch.AddInterceptor(delayInterceptor)
+
+	receiver := newCollectEventIdReceiver()
+	eventSwitch.AddReceiver(receiver)
+
+	eventSwitch.Start()
+
+	for i := 0; i < 100; i++ {
+		emitter.Emit(newEmptyEvent(EventTypeA))
+	}
+
+	eventSwitch.CloseGracefully()
+
+	if receiver.nbReceived != 100 {
+		t.Fatal("Expecting 100 events but received: ", receiver.nbReceived, ".")
+	}
+
+	if numberOfId := len(receiver.ids); numberOfId != 100 {
+		t.Fatal("Expecting 100 IDs but collected: ", numberOfId, ".")
+	}
+
+	if eventSwitch.running {
+		t.Fatal("EventSwitch is still running despite CloseGracefully method has been called.")
+	}
+}
+
+func TestEventSwitch_Close_shouldNotWaitForUnprocessedEvents(t *testing.T) {
+	eventSwitch := NewEventSwitch(10)
+
+	emitter := new(SimpleEmitter)
+	eventSwitch.AddEmitter(emitter)
+
+	delayInterceptor := new(DelayInterceptor)
+	eventSwitch.AddInterceptor(delayInterceptor)
+
+	receiver := newCollectEventIdReceiver()
+	eventSwitch.AddReceiver(receiver)
+
+	eventSwitch.Start()
+
+	for i := 0; i < 100; i++ {
+		emitter.Emit(newEmptyEvent(EventTypeA))
+	}
+
+	eventSwitch.Close()
+
+	if receiver.nbReceived == 100 {
+		t.Fatal("Expecting less than 100 events.")
+	}
+
+	if numberOfId := len(receiver.ids); numberOfId == 100 {
+		t.Fatal("Expecting less than 100 IDs.")
+	}
+
+	if eventSwitch.running {
+		t.Fatal("EventSwitch is still running despite Close method has been called.")
+	}
+}
+
+func TestEventSwitch_Start_shouldHandlePanicGently(t *testing.T) {
+	eventSwitch := NewEventSwitch(10)
+
+	emitter := new(SimpleEmitter)
+	eventSwitch.AddEmitter(emitter)
+
+	testReceiver := newCollectEventIdReceiver()
+	eventSwitch.AddReceiver(testReceiver)
+
+	throwPanicReceiver := new(ThrowPanicReceiver)
+	eventSwitch.AddReceiver(throwPanicReceiver)
+
+	eventSwitch.Start()
+
+	eventOne := newEmptyEvent(EventTypeA)
+	emitter.Emit(eventOne)
+	time.Sleep(2 * time.Millisecond)
+
+	eventTwo := newEmptyEvent(EventTypeB)
+	emitter.Emit(eventTwo)
+	time.Sleep(2 * time.Millisecond)
+
+	if testReceiver.nbReceived != 2 {
+		t.Fatal("Event not received during a riot.")
+	}
+
+	if eventOneState := eventOne.metadata.states[ThrowPanicReceiverKey]; eventOneState != ESError {
+		t.Fatalf("EventOne's state is not correct: %d.", eventOneState)
+	}
+
+	if eventTwoState := eventTwo.metadata.states[ThrowPanicReceiverKey]; eventTwoState != ESError {
+		t.Fatalf("EventTwo's state is not correct: %d.", eventTwoState)
+	}
+}
+
+func TestEventSwitch_Start_shouldHandleMassiveAmountOfEvents(t *testing.T) {
+	numberOfProducers := 50
+	numberOfReceivers := 10
+
+	producers := make(map[int]*CounterProducer, numberOfProducers)
+	receivers := make(map[int]*CounterReceiver, numberOfReceivers)
+
+	finalizer := &CounterFinalizer{mu: &sync.Mutex{}}
+
+	eventSwitch := NewEventSwitch(10).WithEventFinalizer(finalizer)
+
+	for i := 0; i < numberOfProducers; i++ {
+		producer := newCounterProducer()
+		eventSwitch.AddEmitter(producer)
+		producers[i] = producer
+	}
+
+	for i := 0; i < numberOfReceivers; i++ {
+		receiver := newCounterReceiver(i)
+		receivers[i] = receiver
+		eventSwitch.AddReceiver(receiver)
+	}
+
+	interceptor := newCounterInterceptor()
+	eventSwitch.AddInterceptor(interceptor)
+
+	eventSwitch.Start()
+
+	for i := 0; i < numberOfProducers; i++ {
+		go producers[i].EmitWhile()
+	}
+	time.Sleep(10 * time.Millisecond)
+
+	for i := 0; i < numberOfProducers; i++ {
+		producers[i].closed <- struct{}{}
+	}
+	time.Sleep(1 * time.Millisecond)
+
+	eventSwitch.CloseGracefully()
+
+	totalNumberOfEmittedEvents := 0
+	for i := 0; i < numberOfProducers; i++ {
+		totalNumberOfEmittedEvents += producers[i].emittedEventCount
+	}
+
+	for i := 1; i < numberOfReceivers; i++ {
+		previousReceiverCount := receivers[i-1].receivedEventCount
+		currentReceiverCount := receivers[i].receivedEventCount
+		if previousReceiverCount != currentReceiverCount {
+			t.Fatalf("All receivers should receive the same number of events. Receiver #%d received %d but previous receiver got %d.",
+				i, currentReceiverCount, previousReceiverCount)
+		}
+	}
+	totalNumberOfReceivedEvents := receivers[0].receivedEventCount
+
+	if finalizer.finalizedEventCount != totalNumberOfEmittedEvents {
+		t.Fatalf("Finalizer did not processed all events. Emitted %d but finalized %d.", totalNumberOfEmittedEvents, finalizer.finalizedEventCount)
+	}
+
+	if interceptor.interceptedEventCount != totalNumberOfEmittedEvents {
+		t.Fatalf("Should have intercepted %d but got %d.", totalNumberOfEmittedEvents, totalNumberOfReceivedEvents)
+	}
+
+	if totalNumberOfReceivedEvents == totalNumberOfEmittedEvents {
+		t.Fatal("Should have some aborted events.")
+	}
+
+	receivedAndAbortedEventCount := totalNumberOfReceivedEvents + interceptor.abortedEventCount
+	if receivedAndAbortedEventCount != totalNumberOfEmittedEvents {
+		t.Fatalf("The total number of event should equal the number of received events plus the number of aborted events. Got %d but expected %d.",
+			receivedAndAbortedEventCount, totalNumberOfEmittedEvents)
+	}
+}
+
+type DelayInterceptor struct{}
+
+func (i *DelayInterceptor) Key() string {
+	return "DelayInterceptor"
+}
+
+func (i *DelayInterceptor) InterceptPriority() int {
+	return -1
+}
+
+func (i *DelayInterceptor) Intercept(e *Event) error {
+	time.Sleep(1 * time.Second)
+	return nil
+}
+
+type ThrowPanicReceiver struct {
+}
+
+func (tpr *ThrowPanicReceiver) Key() string {
+	return ThrowPanicReceiverKey
+}
+
+func (tpr *ThrowPanicReceiver) HandleEventTypes() []string {
+	return AllEventTypes
+}
+
+func (tpr *ThrowPanicReceiver) ReceiveEvent(e *Event) error {
+	panic("this is my role")
+}
+
+type SimpleEmitter struct {
 	EventEmitter
 }
 
-type Rec1 struct {
+type CollectEventIdReceiver struct {
 	nbReceived int
 	ids        map[uint64]bool
 	mu         *sync.Mutex
 }
 
-func (rec1 *Rec1) Key() string {
-	return "Rec1"
+func newCollectEventIdReceiver() *CollectEventIdReceiver {
+	receiver := new(CollectEventIdReceiver)
+	receiver.ids = make(map[uint64]bool)
+	receiver.mu = &sync.Mutex{}
+	return receiver
 }
 
-func (rec1 *Rec1) HandleEventTypes() []string {
-	return []string{
-		"a",
-		"b",
-	}
+func (tr *CollectEventIdReceiver) Key() string {
+	return "CollectEventIdReceiver"
 }
 
-func (rec1 *Rec1) ReceiveEvent(e *Event) error {
-	rec1.mu.Lock()
-	rec1.ids[e.metadata.id] = true
-	rec1.mu.Unlock()
-	rec1.nbReceived = rec1.nbReceived + 1
+func (tr *CollectEventIdReceiver) HandleEventTypes() []string {
+	return AllEventTypes
+}
+
+func (tr *CollectEventIdReceiver) ReceiveEvent(e *Event) error {
+	tr.mu.Lock()
+	tr.ids[e.metadata.id] = true
+	tr.mu.Unlock()
+	tr.nbReceived += 1
 	return nil
 }
 
-func TestSwitch(t *testing.T) {
-	es := NewEventSwitch(10)
-	t1 := new(Testeur)
-	es.AddEmitter(t1)
-	r1 := new(Rec1)
-	r1.ids = make(map[uint64]bool)
-	r1.mu = &sync.Mutex{}
-	es.AddReceiver(r1)
-
-	es.Start()
-
-	for i := 0; i < 100; i++ {
-		e := &Event{
-			Type: "a",
-		}
-		t1.Emit(e)
-		time.Sleep(1 * time.Millisecond)
-	}
-	time.Sleep(5 * time.Millisecond)
-	if r1.nbReceived != 100 {
-		t.Fatal("Received events : ", r1.nbReceived)
-	}
-	if len(r1.ids) != 100 {
-		t.Fatal("received ids ", len(r1.ids))
-	}
-	es.Close()
-
-	if es.running {
-		t.Fatal("switch still running")
+func newEmptyEvent(eventType string) *Event {
+	return &Event{
+		Type: eventType,
 	}
 }
 
-type Panicker struct {
-}
-
-func (rec1 *Panicker) Key() string {
-	return "Panicker"
-}
-
-func (rec1 *Panicker) HandleEventTypes() []string {
-	return []string{
-		"a",
-		"b",
+func newEventA(payload map[string]interface{}) *Event {
+	return &Event{
+		Type:    EventTypeA,
+		Payload: payload,
 	}
 }
 
-func (rec1 *Panicker) ReceiveEvent(e *Event) error {
-	panic("this is my role")
-
-}
-
-func TestPanic(t *testing.T) {
-	es := NewEventSwitch(10)
-	t1 := new(Testeur)
-	es.AddEmitter(t1)
-	r1 := new(Rec1)
-	r1.ids = make(map[uint64]bool)
-	r1.mu = &sync.Mutex{}
-	es.AddReceiver(r1)
-	r2 := new(Panicker)
-	es.AddReceiver(r2)
-
-	es.Start()
-	e := &Event{
-		Type: "a",
-	}
-	t1.Emit(e)
-	time.Sleep(2 * time.Millisecond)
-	if r1.nbReceived != 1 {
-		t.Fatal("event not received during a riot")
-	}
-	f := &Event{
-		Type: "b",
-	}
-	t1.Emit(f)
-	time.Sleep(2 * time.Millisecond)
-	if r1.nbReceived != 2 {
-		t.Fatal("event not received during a riot")
-	}
-	if f.metadata.states["Panicker"] != ESError {
-		t.Fatal("state not correct", f.metadata.states["Panicker"])
-	}
-}
-
-type Producer struct {
+type CounterProducer struct {
 	EventEmitter
-	nbEmitted int
-	typ       string
-	closed    chan struct{}
+	emittedEventCount int
+	closed            chan struct{}
 }
 
-func (p *Producer) EmitWhile() {
+func newCounterProducer() *CounterProducer {
+	return &CounterProducer{
+		closed: make(chan struct{}),
+	}
+}
+
+func (p *CounterProducer) EmitWhile() {
 	for {
+		p.emittedEventCount = p.emittedEventCount + 1
+
 		payload := make(map[string]interface{})
-		p.nbEmitted = p.nbEmitted + 1
-		payload["nb"] = p.nbEmitted
-		e := &Event{
-			Type:    p.typ,
-			Payload: payload,
-		}
-		p.Emit(e)
+		payload["finalizedEventCount"] = p.emittedEventCount
+
+		p.Emit(newEventA(payload))
 		time.Sleep(3 * time.Millisecond)
+
 		var ok bool
+
 		select {
 		case <-p.closed:
 			ok = true
-			// log.Println("closing producer")
 		default:
 			ok = false
 		}
+
 		if ok {
 			break
 		}
 	}
 }
 
-type GlobalRec struct {
-	mu       *sync.Mutex
-	received int
-	typ      string
+type CounterReceiver struct {
+	mu                 *sync.Mutex
+	index              int
+	receivedEventCount int
 }
 
-func (gr *GlobalRec) Key() string {
-	return "GR"
-}
-
-func (gr *GlobalRec) HandleEventTypes() []string {
-	return []string{
-		gr.typ,
+func newCounterReceiver(index int) *CounterReceiver {
+	return &CounterReceiver{
+		index: index,
+		mu:    &sync.Mutex{},
 	}
 }
 
-func (gr *GlobalRec) ReceiveEvent(e *Event) error {
+func (gr *CounterReceiver) Key() string {
+	return "CounterReceiver-" + strconv.Itoa(gr.index)
+}
+
+func (gr *CounterReceiver) HandleEventTypes() []string {
+	return AllEventTypes
+}
+
+func (gr *CounterReceiver) ReceiveEvent(e *Event) error {
 	gr.mu.Lock()
 	if e.GetID()%10 == 0 {
 		log.Println("should not have received this event")
 	}
-	gr.received = gr.received + 1
+	gr.receivedEventCount += 1
 	gr.mu.Unlock()
 	return nil
 }
 
-type Inter struct {
-	received int
-	mu       *sync.Mutex
-	aborted  int
+type CounterEventInterceptor struct {
+	interceptedEventCount int
+	mu                    *sync.Mutex
+	abortedEventCount     int
 }
 
-func (i *Inter) Key() string {
-	return "inter"
+func newCounterInterceptor() *CounterEventInterceptor {
+	return &CounterEventInterceptor{
+		mu: &sync.Mutex{},
+	}
 }
-func (i *Inter) InterceptPriority() int {
+
+func (i *CounterEventInterceptor) Key() string {
+	return "CounterEventInterceptor"
+}
+
+func (i *CounterEventInterceptor) InterceptPriority() int {
 	return -1
 }
-func (i *Inter) Intercept(e *Event) error {
+
+func (i *CounterEventInterceptor) Intercept(e *Event) error {
 	i.mu.Lock()
-	i.received = i.received + 1
+	i.interceptedEventCount += 1
 
 	if e.GetID()%10 == 0 {
 		e.Abort(i, "abort every 10")
-		i.aborted = i.aborted + 1
+		i.abortedEventCount += 1
 	}
 	i.mu.Unlock()
 	return nil
 }
 
-type Fin struct {
-	nb int
-	mu *sync.Mutex
+type CounterFinalizer struct {
+	finalizedEventCount int
+	mu                  *sync.Mutex
 }
 
-func (f *Fin) Finalize(e *Event) {
+func (f *CounterFinalizer) Finalize(e *Event) {
 	f.mu.Lock()
-	f.nb = f.nb + 1
+	f.finalizedEventCount = f.finalizedEventCount + 1
 	f.mu.Unlock()
-}
-
-func TestMassiveEvents(t *testing.T) {
-	nbProducer := 50
-	nbReceiver := 10
-	producers := make(map[int]*Producer, nbProducer)
-	fin := &Fin{mu: &sync.Mutex{}}
-	es := NewEventSwitch(10).WithEventFinalizer(fin)
-
-	for i := 0; i < nbProducer; i++ {
-		p := &Producer{
-			closed: make(chan struct{}),
-			typ:    "a",
-		}
-		es.AddEmitter(p)
-		producers[i] = p
-	}
-	receivers := make(map[int]*GlobalRec, nbReceiver)
-	gr := &GlobalRec{
-		typ: "a",
-		mu:  &sync.Mutex{},
-	}
-	receivers[0] = gr
-	es.AddReceiver(gr)
-	in := &Inter{
-		mu: &sync.Mutex{},
-	}
-	es.AddInterceptor(in)
-
-	es.Start()
-
-	for i := 0; i < nbProducer; i++ {
-		go producers[i].EmitWhile()
-	}
-
-	time.Sleep(10 * time.Millisecond)
-	for i := 0; i < nbProducer; i++ {
-		producers[i].closed <- struct{}{}
-	}
-	es.Stop()
-	time.Sleep(1 * time.Millisecond)
-	total := 0
-	for i := 0; i < nbProducer; i++ {
-		total = total + producers[i].nbEmitted
-	}
-	if fin.nb != total {
-		t.Fatal("finalize did not received all revents ", fin.nb, "-", total)
-	}
-	if in.received != total {
-		t.Fatal("Multiproducers failed : ", gr.received, " - ", total)
-	}
-	if gr.received == total {
-		t.Fatal("should have some aborted event")
-	}
-	if gr.received+in.aborted != total {
-		t.Fatal("total must equal to received and aborted")
-	}
 }

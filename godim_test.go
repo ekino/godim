@@ -11,25 +11,35 @@ import (
 	"time"
 )
 
-type Bidule struct{}
-type Truc struct{}
+const (
+	ServiceLabel = "service"
+	BKey         = "bbb"
+	Yes          = "yes"
+	No           = "no"
+)
+
+type Foo struct{}
+type Bar struct{}
 
 func config(key string) interface{} {
 	fmt.Printf("Searching for key %s \n", key)
 	return key
 }
 
-func TestDefaultGodim(t *testing.T) {
+func TestGodim_DeclareDefault(t *testing.T) {
 	g := Default()
-	a := Bidule{}
-	b := Truc{}
-	err := g.DeclareDefault(a, b)
+
+	foo := Foo{}
+	bar := Bar{}
+
+	err := g.DeclareDefault(foo, bar)
 	if err != nil {
-		t.Fatalf("Error while declaring default %s \n", err)
+		t.Fatalf("Error while declaring default: %s.", err)
 	}
-	err = g.DeclareDefault(&Bidule{})
+
+	err = g.DeclareDefault(&Foo{})
 	if err == nil {
-		t.Fatalf("there must be an error")
+		t.Fatal("An error is expected.")
 	}
 }
 
@@ -44,10 +54,10 @@ func (a *A) Priority() int {
 }
 
 func (a *A) OnInit() error {
-	if a.B.Initialized == "yes" {
-		a.PreInitialized = "yes"
+	if a.B.Initialized == Yes {
+		a.PreInitialized = Yes
 	} else {
-		a.PreInitialized = "no"
+		a.PreInitialized = No
 	}
 	return nil
 }
@@ -57,7 +67,7 @@ type B struct {
 }
 
 func (b *B) Key() string {
-	return "bbb"
+	return BKey
 }
 
 func (b *B) OnInit() error {
@@ -87,76 +97,149 @@ func (c *C) OnClose() error {
 	return nil
 }
 
-func TestDeclare(t *testing.T) {
+func TestGodim_Declare_shouldHandleDependenciesAndGetThemBack(t *testing.T) {
 	g := NewConfig().WithAppProfile(StrictHTTPAppProfile()).WithConfigurationFunction(conf).Build()
+
 	a := A{}
 	b := B{}
 	c := C{}
-	err := g.Declare("service", &b)
+
+	err := g.Declare(ServiceLabel, &b)
 	if err != nil {
-		t.Fatalf("error while declaring service %s \n", err)
+		t.Fatalf("Error while declaring 'service': %s.", err)
 	}
+
 	err = g.Declare("handler", &a, &c)
 	if err != nil {
-		t.Fatalf("error while declaring handlers %s \n", err)
+		t.Fatalf("Error while declaring 'handler': %s.", err)
 	}
-	fmt.Println("configuration phase")
+
 	err = g.RunApp()
 
-	ob := g.GetStruct("service", "bbb")
+	ob := g.GetStruct(ServiceLabel, BKey)
 
 	if ob == nil {
-		t.Fatalf("must have retrieve service b")
+		t.Fatal("Should have retrieved service B")
 	}
 
 	if err != nil {
-		t.Fatalf(" error while configuring %s \n", err)
-	}
-	if a.Lab != "bid" {
-		t.Fatalf("misconfig on string")
-	}
-	if c.Myint != 12 {
-		t.Fatalf("misconfig on int64")
+		t.Fatalf("Error while configuring %s.", err)
 	}
 
-	fmt.Printf("A : %+v\n", a)
-	if a.B != &b || c.B != &b {
-		t.Fatalf("misinjection %+v %+v", a.B, &b)
-	}
-	if !g.lifecycle.current(stRun) {
-		t.Fatalf("Wrong state %s", g.lifecycle)
-	}
 	if c.Val != 42 {
-		t.Fatalf("Wrong initialization OnInit")
+		t.Fatalf("OnInit initialization failed. Expecting 42 but got %d.", c.Val)
 	}
+
+	if a.Lab != "bid" {
+		t.Fatalf("string property got wrong value: 'bid' expected but got '%s'.", a.Lab)
+	}
+
+	if c.Myint != 12 {
+		t.Fatalf("int64 property got wrong value: 12 expected but got %d.", c.Myint)
+	}
+
+	if a.B != &b {
+		t.Fatalf("A got an unexpected value for B: got %+v but expected %+v.", a.B, &b)
+	}
+	if c.B != &b {
+		t.Fatalf("C got an unexpected value for B: got %+v but expected %+v.", c.B, &b)
+	}
+
+	if !g.lifecycle.current(stRun) {
+		t.Fatalf("Wrong state: %s.", g.lifecycle)
+	}
+
 	err = g.CloseApp()
 	if err != nil {
-		t.Fatalf("Error while closing app")
+		t.Fatal("Error while closing app")
 	}
 
 	if !g.lifecycle.current(stClose) {
-		t.Fatalf("Wrong state %s", g.lifecycle)
+		t.Fatalf("Wrong state: %s.", g.lifecycle)
 	}
+
 	if c.Val != 24 {
-		t.Fatalf("no Call to OnClose")
+		t.Fatalf("OnClose finalization failed. Expecting 24 but got %d.", c.Val)
 	}
 
 	// Check initialization priorities
-	if b.Initialized != "yes" {
-		t.Fatalf("b OnInit not called")
+	if b.Initialized != Yes {
+		t.Fatal("b OnInit not called")
 	}
 
-	if a.PreInitialized == "yes" {
-		t.Fatalf("a priority not respected in regard to b")
+	if a.PreInitialized == Yes {
+		t.Fatal("a priority not respected in regard to b")
 	}
 
-	if c.PreInitialized != "yes" {
-		t.Fatalf("b Priority not respected")
+	if c.PreInitialized != Yes {
+		t.Fatal("b Priority not respected")
+	}
+}
+
+func TestGodim_RunApp_shouldRunTheEventSwitchWhenConfigured(t *testing.T) {
+	g := NewConfig().WithAppProfile(StrictHTTPAppProfile()).
+		WithConfigurationFunction(conf).
+		WithEventSwitch(10).
+		Build()
+
+	emitter := new(SimpleEmitter)
+	receiver := newCounterReceiver(1)
+
+	err := g.Declare("service", emitter, receiver)
+	if err != nil {
+		t.Fatal("Error while declaring service:", err)
+	}
+
+	err = g.RunApp()
+
+	for i := 0; i < 100; i++ {
+		emitter.Emit(newEmptyEvent(EventTypeA))
+		time.Sleep(1 * time.Millisecond)
+	}
+
+	time.Sleep(5 * time.Millisecond)
+	if receiver.receivedEventCount != 100 {
+		t.Fatalf("Wrong number of event received. 100 expected, but got %d.", receiver.receivedEventCount)
+	}
+
+	g.CloseApp()
+
+	time.Sleep(1 * time.Millisecond)
+	if g.eventSwitch.running {
+		t.Fatal("EventSwitch should be closed.")
+	}
+}
+
+func TestGodim_CloseAppGracefully_shouldGracefullyCloseTheEventSwitch(t *testing.T) {
+	g := NewConfig().WithAppProfile(StrictHTTPAppProfile()).
+		WithConfigurationFunction(conf).
+		WithEventSwitch(10).
+		Build()
+
+	emitter := new(SimpleEmitter)
+	receiver := newCounterReceiver(1)
+	interceptor := new(DelayInterceptor)
+
+	err := g.Declare("service", emitter, receiver, interceptor)
+	if err != nil {
+		t.Fatal("Error while declaring service:", err)
+	}
+
+	err = g.RunApp()
+
+	for i := 0; i < 100; i++ {
+		emitter.Emit(newEmptyEvent(EventTypeA))
+	}
+	go g.CloseAppGracefully()
+
+	time.Sleep(100 * time.Millisecond)
+
+	if !g.lifecycle.current(stRun) {
+		t.Fatal("The graceful closing of the application should shutdown the EventEmitter first.")
 	}
 }
 
 func conf(key string, val reflect.Value) (interface{}, error) {
-
 	if key == "myint.key" {
 		var i int64
 		i = 12
@@ -166,85 +249,4 @@ func conf(key string, val reflect.Value) (interface{}, error) {
 		return "bid", nil
 	}
 	return nil, fmt.Errorf("unknow key %s", key)
-}
-
-type EA struct {
-	EventEmitter
-}
-
-type RA struct {
-	nbReceived int
-}
-
-func (ra *RA) Key() string {
-	return "RA"
-}
-
-func (ra *RA) OnInit() error {
-	ra.nbReceived = 0
-	return nil
-}
-
-func (ra *RA) HandleEventTypes() []string {
-	return []string{
-		"aa",
-	}
-}
-func (ra *RA) ReceiveEvent(e *Event) error {
-	ra.nbReceived = ra.nbReceived + 1
-	return nil
-}
-
-type IA struct {
-	nbIntercept int
-}
-
-func (ia *IA) Key() string {
-	return "IA"
-}
-
-func (ia *IA) InterceptPriority() int {
-	return -10
-}
-
-func (ia *IA) Intercept(e *Event) error {
-	ia.nbIntercept = ia.nbIntercept + 1
-	return nil
-}
-
-func TestWithEventSwitch(t *testing.T) {
-	g := NewConfig().WithAppProfile(StrictHTTPAppProfile()).
-		WithConfigurationFunction(conf).
-		WithEventSwitch(10).
-		Build()
-	ea := new(EA)
-	ra := new(RA)
-	ia := new(IA)
-	err := g.Declare("service", ea, ra, ia)
-	if err != nil {
-		t.Fatal("Error while declaring service:", err)
-	}
-
-	err = g.RunApp()
-
-	for i := 0; i < 100; i++ {
-		e := &Event{
-			Type: "aa",
-		}
-		ea.Emit(e)
-		time.Sleep(1 * time.Millisecond)
-	}
-
-	time.Sleep(5 * time.Millisecond)
-	if ra.nbReceived != 100 {
-		t.Fatal("wrong number of event received", ra.nbReceived)
-	}
-	if ia.nbIntercept != 100 {
-		t.Fatal("wrong number of event intercepted", ia.nbIntercept)
-	}
-	g.CloseApp()
-	time.Sleep(1 * time.Millisecond)
-	if g.eventSwitch.running {
-		t.Fatal("eventswitch not closed")
-	}
 }
