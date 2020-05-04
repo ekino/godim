@@ -35,7 +35,7 @@ func DefaultConfig() *Config {
 	return &Config{
 		injectString: defaultInject,
 		configString: defaultConfig,
-		appProfile:   newAppProfile(),
+		appProfile:   NewAppProfile(),
 		activateES:   false,
 	}
 }
@@ -86,7 +86,7 @@ func (c *Config) WithEventSwitch(bufferSize int) *Config {
 // Build lock profile and build godim
 func (c *Config) Build() *Godim {
 	if c.appProfile == nil {
-		c.appProfile = newAppProfile()
+		c.appProfile = NewAppProfile()
 	}
 	c.appProfile.lock()
 	if c.activateES {

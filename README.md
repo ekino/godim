@@ -22,10 +22,11 @@ package main
 import (
   "github.com/ekino/godim"
   "fmt"
+  "log"
 )
 
 type MyHandler struct {
-  UserService *UserService `inject:"UserService"`
+  UserService *UserService `inject:"default:UserService"`
 }
 
 func (mh *MyHandler) doIt() {
@@ -47,7 +48,14 @@ func config(key string, kind reflect.Kind) (interface{}, error) {
 func main(){
   mh := MyHandler{}
   us := UserService{}
-  g := godim.NewGodim(godim.DefaultConfig().WithConfigurationFunction())
+  
+  profile :=  godim.NewAppProfile()
+  // Manually declare default profile (auto initialization seems broken)
+  if err := profile.AddProfile(&godim.DefaultProfile); err != nil {
+  	 log.Panic(err)
+   }
+
+  g := godim.NewGodim(godim.DefaultConfig().WithConfigurationFunction(config))
   g.DeclareDefault(&mh,&us)
   g.RunApp()
   
@@ -81,7 +89,7 @@ type UserService struct {
 
 }
 ````
-will have a name : main.UserService
+will have a name : profileName:UserService where profileName is the name of the profile the structure is declared in 
 
 #### Profile
 

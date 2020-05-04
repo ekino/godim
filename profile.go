@@ -41,7 +41,7 @@ var DefaultProfile = Profile{
 
 // NewAppProfile returns a new AppProfile that will drive
 // injection and dependency throu your application
-func newAppProfile() *AppProfile {
+func NewAppProfile() *AppProfile {
 	return &AppProfile{
 		profiles: make(map[string]*Profile),
 		locked:   false,
@@ -59,7 +59,7 @@ func newAppProfile() *AppProfile {
 // - driver : manage resource driver
 //
 func StrictHTTPAppProfile() *AppProfile {
-	app := newAppProfile()
+	app := NewAppProfile()
 	app.AddProfileDef("handler")
 	app.AddProfileDef("service", "handler")
 	app.AddProfileDef("repository", "service")
@@ -77,7 +77,7 @@ func StrictHTTPAppProfile() *AppProfile {
 // - repository : manage data access
 //
 func HTTPAppProfile() *AppProfile {
-	app := newAppProfile()
+	app := NewAppProfile()
 	app.AddProfileDef("handler")
 	app.AddProfileDef("service", "handler", "service")
 	app.AddProfileDef("repository", "service")
@@ -121,6 +121,9 @@ func (ap *AppProfile) AddProfileDef(name string, injectIn ...string) error {
 func (ap *AppProfile) AddProfile(p *Profile) error {
 	if ap.locked {
 		return newError(fmt.Errorf("AppProfile locked, can't add new profile")).SetErrType(ErrTypeProfile)
+	}
+	if ap.profiles == nil {
+		ap.profiles = map[string]*Profile{}
 	}
 	if ap.profiles[p.name] != nil {
 		return newError(fmt.Errorf("%s is already declared", p.name)).SetErrType(ErrTypeProfile)

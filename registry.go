@@ -45,7 +45,7 @@ func newRegistry() *Registry {
 	return &Registry{
 		inject:     defaultInject,
 		config:     defaultConfig,
-		appProfile: newAppProfile(),
+		appProfile: NewAppProfile(),
 		values:     make(map[string]map[string]*holder),
 		tags:       make(map[reflect.Type]*TagConfig),
 		inits:      make(map[int]map[reflect.Type]reflect.Value),

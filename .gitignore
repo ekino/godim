@@ -2,3 +2,4 @@ vendor/*
 profile.out
 acc.out
 coverage.out
+.idea
