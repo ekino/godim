@@ -71,7 +71,7 @@ type Identifier interface {
 	Key() string
 }
 ````
-By default, naming convention will use class definition.
+By default, naming convention will use class definition without package.
 For instance :
 
 ````go
@@ -81,7 +81,7 @@ type UserService struct {
 
 }
 ````
-will have a name : main.UserService
+will have a name : UserService
 
 #### Profile
 
