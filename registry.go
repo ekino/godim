@@ -136,10 +136,9 @@ func (registry *Registry) declareInterfaces(o interface{}, typ reflect.Type) err
 	}
 	ptyp := reflect.PtrTo(typ)
 	if ptyp.Implements(initType) {
-		v, ok := registry.inits[prio]
+		_, ok := registry.inits[prio]
 		if !ok {
-			v = make(map[reflect.Type]reflect.Value)
-			registry.inits[prio] = v
+			registry.inits[prio] = make(map[reflect.Type]reflect.Value)
 		}
 		registry.inits[prio][typ] = reflect.ValueOf(o).MethodByName("OnInit")
 	}

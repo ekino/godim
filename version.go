@@ -5,4 +5,4 @@
 package godim
 
 // Version is the current godim version
-const Version = "0.5.0-alpha"
+const Version = "0.6.1"

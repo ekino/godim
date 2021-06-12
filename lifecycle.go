@@ -4,10 +4,6 @@
 
 package godim
 
-import (
-	"fmt"
-)
-
 type state int
 
 const (
@@ -22,19 +18,19 @@ const (
 func (s state) String() string {
 	switch s {
 	case 0:
-		return fmt.Sprint("Declaration phase")
+		return "declaration phase"
 	case 1:
-		return fmt.Sprint("Configuration phase")
+		return "configuration phase"
 	case 2:
-		return fmt.Sprint("Injection phase")
+		return "injection phase"
 	case 3:
-		return fmt.Sprint("Initialization phase")
+		return "initialization phase"
 	case 4:
-		return fmt.Sprint("Run phase")
+		return "run phase"
 	case 5:
-		return fmt.Sprint("Close phase")
+		return "close phase"
 	}
-	return fmt.Sprint("Unknown phase ")
+	return "Unknown phase "
 }
 
 type lifecycle struct {

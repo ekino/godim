@@ -45,7 +45,7 @@ func (godim *Godim) DeclareDefault(o ...interface{}) error {
 			}
 		}
 	} else {
-		return newError(fmt.Errorf("Current phase %s", godim.lifecycle)).SetErrType(ErrTypeGodim)
+		return newError(fmt.Errorf("current phase %s", godim.lifecycle)).SetErrType(ErrTypeGodim)
 	}
 	return nil
 }
@@ -60,7 +60,7 @@ func (godim *Godim) Declare(label string, o ...interface{}) error {
 			}
 		}
 	} else {
-		return newError(fmt.Errorf("Current phase %s", godim.lifecycle)).SetErrType(ErrTypeGodim)
+		return newError(fmt.Errorf("current phase %s", godim.lifecycle)).SetErrType(ErrTypeGodim)
 	}
 	return nil
 }
